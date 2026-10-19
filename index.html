@@ -70,22 +70,13 @@ h1,h2{font-family:var(--serif);font-weight:600;margin:0;line-height:1.15}
 .card h1{font-size:clamp(2rem,9vw,2.8rem);position:relative}
 .ask{font-family:var(--serif);font-size:clamp(1.55rem,6.8vw,2.1rem);line-height:1.25;margin:.7rem 0 .5rem;color:var(--deep);position:relative}
 .soft{margin:0 0 .9rem;font-size:clamp(.95rem,3.8vw,1.05rem)}
-.inst{margin:0;font-weight:600;font-size:clamp(.9rem,3.6vw,1rem)}
 .arena{position:relative;width:100%;height:250px;margin:14px 0 0}
 .btn{min-height:48px;min-width:48px;border:0;border-radius:var(--r-pill);padding:12px 26px;font-weight:700;font-size:1.05rem;position:absolute}
 .yes{left:50%;top:0;transform:translateX(-50%);width:min(60%,160px);z-index:3;color:#fff;background:linear-gradient(135deg,#F06C9B,var(--deep));box-shadow:0 8px 20px rgba(217,79,130,.45),0 0 18px rgba(240,108,155,.5);transition:transform var(--t-fast)}
 .yes:hover{transform:translateX(-50%) scale(1.04)}
 .no{left:0;top:0;width:100px;z-index:2;background:var(--lav);color:var(--ink);box-shadow:0 0 0 2px #cdb8ec inset;will-change:transform;padding:12px 10px}
 .msg{min-height:1.4em;margin:6px 0 0;font-size:.95rem;font-style:italic}
-.dragrow{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:6px;min-height:92px}
-.knob{position:relative;z-index:5;width:60px;height:60px;border-radius:50%;border:2px solid var(--gold);display:grid;place-items:center;font-size:1.6rem;color:var(--deep);cursor:grab;
-  background:radial-gradient(circle at 35% 30%,#fff,var(--blush) 70%);box-shadow:0 0 0 6px rgba(231,200,120,.3),0 0 22px rgba(231,200,120,.9);
-  touch-action:none;user-select:none;-webkit-user-select:none;animation:pulse 2s ease-in-out infinite}
-.knob.drag{cursor:grabbing;animation:none;transition:none}
-.knob.back{transition:transform .4s cubic-bezier(.3,1.4,.5,1)}
-.knob.gone{transition:transform .5s,opacity .5s;transform:scale(0)!important;opacity:0}
 @keyframes pulse{50%{box-shadow:0 0 0 12px rgba(231,200,120,.15),0 0 30px rgba(231,200,120,1)}}
-.lbl{font-size:.95rem;font-weight:600}
 
 /* letter */
 #letter{justify-content:flex-start}
@@ -126,16 +117,11 @@ h1,h2{font-family:var(--serif);font-weight:600;margin:0;line-height:1.15}
     <h1>Hey Krithu 💗</h1>
     <p class="ask">Krithu, will you be my love now and forever!</p>
     <p class="soft">I've been wanting to tell you something special...</p>
-    <p class="inst">Click the sparkling circle and drag it to the answer you choose ✨</p>
     <div class="arena" id="arena">
       <button class="btn yes" id="yes" type="button">Yes 💖</button>
       <button class="btn no" id="no" type="button">No 🙈</button>
     </div>
     <p class="msg" id="msg" aria-live="polite"></p>
-    <div class="dragrow">
-      <div class="knob" id="knob" role="button" tabindex="0" aria-label="Sparkling circle. Drag it onto Yes, or press Enter to answer Yes.">✦</div>
-      <span class="lbl">Drag me to your answer ✨</span>
-    </div>
   </div>
 </section>
 
@@ -209,8 +195,9 @@ env.addEventListener("click",function(){
 });
 
 /* ---------- stage 2: proposal ---------- */
-var arena=$("#arena"),yes=$("#yes"),no=$("#no"),knob=$("#knob"),msg=$("#msg");
-var A0=12,A1=168,ang=90,raf=0,lastDodge=0,chosen=false,L={cx:0,cy:0,r:0};
+var arena=$("#arena"),yes=$("#yes"),no=$("#no"),msg=$("#msg");
+var A0=12,A1=168,ang=90,raf=0,chosen=false,tries=0,lastHop=0,L={cx:0,cy:0,r:0};
+var lines=["Okay, good try! 😄","Hehe, too slow 🙈","Almost got me! ✨","Nice try, Krithu 💗","Whoops, I moved! 🏃","The No button is shy 🙈","So close! Try again 😜","Okay okay… maybe press Yes? 💖","You're persistent 😂","That one was fast! ⚡"];
 function layout(){
   var W=arena.clientWidth,H=arena.clientHeight,nw=no.offsetWidth,nh=no.offsetHeight,yb=yes.offsetHeight;
   L.cx=W/2;L.cy=yb+14;
@@ -223,50 +210,26 @@ function place(a){
   no.style.transform="translate("+x.toFixed(1)+"px,"+y.toFixed(1)+"px)";
 }
 function moveTo(t){
-  cancelAnimationFrame(raf);var from=ang,t0=performance.now(),dur=reduce?1:520;
+  cancelAnimationFrame(raf);var from=ang,t0=performance.now(),dur=reduce?1:420;
   (function step(now){var k=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-k,3);place(from+(t-from)*e);if(k<1)raf=requestAnimationFrame(step)})(t0);
 }
-function dodge(px,py){
-  var now=performance.now();if(now-lastDodge<380||chosen)return;
-  var c=centerOf(no),d=Math.hypot(px-c.x,py-c.y);if(d>88)return;
-  lastDodge=now;var dir=px<c.x?-1:1,t=ang+dir*(55+Math.random()*35);
-  if(t<A0||t>A1)t=dir<0?A1-Math.random()*25:A0+Math.random()*25;
-  moveTo(t);
-  var m=["Hehe, too slow 🙈","The No button is shy 💗","Try Yes instead 💖","Catch me if you can ✨"];msg.textContent=m[Math.floor(Math.random()*m.length)];
+function hop(){
+  var now=performance.now();if(chosen||now-lastHop<250)return;lastHop=now;
+  var c=centerOf(no),t;burst(c.x,c.y,6);
+  do{t=A0+Math.random()*(A1-A0)}while(Math.abs(t-ang)<45);
+  moveTo(t);msg.textContent=lines[tries%lines.length];tries++;
 }
-no.addEventListener("pointerenter",function(e){if(e.pointerType==="mouse")dodge(e.clientX,e.clientY+1)});
-no.addEventListener("click",function(){lastDodge=0;var c=centerOf(no);dodge(c.x,c.y);msg.textContent="Oops, it slipped away 🙈 Try Yes 💖"});
+no.addEventListener("pointerenter",function(e){if(e.pointerType==="mouse")hop()});
+no.addEventListener("pointerdown",function(e){e.preventDefault();hop()});
+no.addEventListener("click",function(e){if(e.detail===0)hop()});
+yes.addEventListener("click",chooseYes);
 
-var drag=null;
-knob.addEventListener("pointerdown",function(e){
-  if(chosen)return;e.preventDefault();
-  drag={id:e.pointerId,x:e.clientX,y:e.clientY};knob.classList.remove("back");knob.classList.add("drag");
-  try{knob.setPointerCapture(e.pointerId)}catch(_){}
-});
-knob.addEventListener("pointermove",function(e){
-  if(!drag||e.pointerId!==drag.id)return;
-  knob.style.transform="translate("+(e.clientX-drag.x)+"px,"+(e.clientY-drag.y)+"px)";
-  var c=centerOf(knob);dodge(c.x,c.y);
-  if(Math.random()<.25&&live<MAX)burst(c.x,c.y,1);
-});
-function end(e){
-  if(!drag||e.pointerId!==drag.id)return;drag=null;knob.classList.remove("drag");
-  try{knob.releasePointerCapture(e.pointerId)}catch(_){}
-  var k=knob.getBoundingClientRect(),y=yes.getBoundingClientRect(),cx=k.left+k.width/2,cy=k.top+k.height/2,pad=14;
-  if(cx>y.left-pad&&cx<y.right+pad&&cy>y.top-pad&&cy<y.bottom+pad){chooseYes(cx,cy,true)}
-  else{knob.classList.add("back");knob.style.transform="translate(0,0)"}
-}
-knob.addEventListener("pointerup",end);knob.addEventListener("pointercancel",end);
-knob.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();chooseYes()}});
-yes.addEventListener("click",function(){chooseYes()});
-
-function chooseYes(x,y,fromKnob){
+function chooseYes(){
   if(chosen||state!=="proposal")return;chosen=true;
-  yes.disabled=no.disabled=true;knob.setAttribute("aria-disabled","true");
-  if(!fromKnob){var c=centerOf(yes);x=c.x;y=c.y}
-  knob.classList.add("gone");
-  burst(x,y,30);burst(0,0,16,true);
-  wait(300).then(function(){burst(x,y,20)});
+  yes.disabled=no.disabled=true;
+  var c=centerOf(yes);
+  burst(c.x,c.y,30);burst(0,0,16,true);
+  wait(300).then(function(){burst(c.x,c.y,20)});
   wait(1000).then(function(){return go("letter")}).then(revealLetter);
 }
 
